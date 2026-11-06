@@ -1,13 +1,13 @@
 import {openDB} from 'idb';
 import type {Factor, Result} from '../idrs/scoring';
 import type {RecommendationSnapshot} from '../recommendations/engine';
+import {ASSESSMENT_DB_VERSION,upgradeAssessmentDatabase} from '../assessment/schema';
 
 const DB='glucoguide-local';
 const STORE='screenings';
 
 async function db(){
-  // Version 2 keeps the existing store/keyPath intact. Legacy records remain readable.
-  return openDB(DB,2,{upgrade(database,oldVersion){if(oldVersion<1)database.createObjectStore(STORE,{keyPath:'id',autoIncrement:true});}});
+  return openDB(DB,ASSESSMENT_DB_VERSION,{upgrade(database,oldVersion){upgradeAssessmentDatabase(database,oldVersion)}});
 }
 
 export interface Saved extends Result {id?:number;recommendationSnapshot?:RecommendationSnapshot}
@@ -17,6 +17,9 @@ export function createHistoryRecord(result:Result,recommendationSnapshot:Recomme
 }
 export async function saveHistory(result:Result,recommendationSnapshot:RecommendationSnapshot){
   const database=await db();const transaction=database.transaction(STORE,'readwrite');
+  const previous=await transaction.store.getAll();
+  const existing=previous.find(item=>item.date===result.date&&JSON.stringify(item.answers)===JSON.stringify(result.answers));
+  if(existing?.id!==undefined){await transaction.done;return existing.id;}
   const id=await transaction.store.add(createHistoryRecord(result,recommendationSnapshot));
   const numericId=Number(id);
   const stored=createHistoryRecord(result,{...recommendationSnapshot,screeningId:numericId});

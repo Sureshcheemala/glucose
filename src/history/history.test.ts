@@ -31,6 +31,19 @@ describe('historical comparisons',()=>{
     expect(fromSecondToThird.factors[0].scoreChanged).toBe(false);
     expect(fromSecondToThird.factors[1].answerChanged).toBe(true);
   });
+  it('calculates the specified male waist-only change exactly without claiming clinical improvement',()=>{
+    const previous={...calculateIDRS({age:50,sex:'male',waist:100,activity:'vigorous',parents:'one'}),date:'2026-10-01T00:00:00.000Z'};
+    const current={...calculateIDRS({age:50,sex:'male',waist:95,activity:'vigorous',parents:'one'}),date:'2026-11-01T00:00:00.000Z'};
+    const comparison=compareHistory(current,previous);
+    expect(previous.factors.map(factor=>factor.score)).toEqual([30,20,0,10]);
+    expect(current.factors.map(factor=>factor.score)).toEqual([30,10,0,10]);
+    expect(previous.total).toBe(60);expect(previous.risk).toBe('high');
+    expect(current.total).toBe(50);expect(current.risk).toBe('moderate');
+    expect(comparison.scoreChange).toBe(-10);
+    expect(comparison.factors.map(factor=>factor.answerChanged)).toEqual([false,true,false,false]);
+    expect(comparison.factors.find(factor=>factor.key==='waist')?.previousAnswer).toBe('male:100');
+    expect(comparison.factors.find(factor=>factor.key==='waist')?.currentAnswer).toBe('male:95');
+  });
   it('stores and reopens the exact recommendation snapshot without regenerating it',()=>{
     const source=createRecommendationSnapshot(first,'en','2026-10-01T00:00:00.000Z');
     const saved=createHistoryRecord(first,source);

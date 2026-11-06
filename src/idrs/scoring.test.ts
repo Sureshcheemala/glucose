@@ -13,6 +13,15 @@ describe('IDRS scoring boundaries',()=>{
     const answers=expected===0?base:expected===30?{...base,activity:'sedentary' as const}:expected===50?{...base,age:35,activity:'sedentary' as const}:expected===60?{age:50,sex:'male' as const,waist:90,activity:'moderate' as const,parents:'one' as const}:{age:50,sex:'male' as const,waist:100,activity:'sedentary' as const,parents:'both' as const};
     const result=calculateIDRS(answers);expect(result.total).toBe(expected);expect(result.risk).toBe(risk);
   });
+  it('keeps every answer combination within the configured score bands and category cutoffs',()=>{
+    const seen=new Set<number>();
+    for(const age of [34,35,50])for(const sex of ['male','female'] as const)for(const waist of [79,80,89,90,99,100])for(const activity of ['vigorous','moderate','mild','sedentary'] as const)for(const parents of ['neither','one','both'] as const){
+      const result=calculateIDRS({age,sex,waist,activity,parents});seen.add(result.total);
+      expect(result.risk).toBe(result.total<30?'low':result.total<=50?'moderate':'high');
+      expect(result.total).not.toBeGreaterThan(100);
+    }
+    expect([...seen].some(total=>total>=51&&total<=59)).toBe(false);
+  });
   it.each([
     [{...base,age:undefined},'age'],[{...base,sex:undefined},'sex'],[{...base,waist:undefined},'waist'],[{...base,activity:undefined},'activity'],[{...base,parents:undefined},'parents'],
     [{...base,sex:'other'},'sex'],[{...base,activity:'none'},'activity'],[{...base,parents:'unknown'},'parents']

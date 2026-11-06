@@ -73,8 +73,10 @@ describe('deterministic personalized recommendation rules',()=>{
   const plan=recommendationPlan(result({waist:96,activity:'vigorous',parents:'both'}),'en');
   const waist=plan.personalized.find(item=>item.id==='waist-awareness')!;
   expect(waist.title).toBe('Understand waist and metabolic health');
-  expect(waist.linkedArticleIds).toEqual(['food-balanced','activity-benefits']);
-  expect(`${waist.whyItMatters} ${waist.practicalSuggestions.join(' ')}`).not.toMatch(/\b(tape|rib|hip bone|how to measure)\b/i);
+  expect(waist.linkedArticleIds).toEqual(['measurements-waist']);
+  expect(`${waist.whyItMatters} ${waist.practicalSuggestions.join(' ')}`).not.toMatch(/\b(tape|rib|hip bone|how to measure|balanced meal|physical activity)\b/i);
+  expect(plan.general.find(item=>item.id==='general-balanced-meals')?.section).toBe('general');
+  expect(plan.personalized.find(item=>item.id==='waist-awareness')?.practicalSuggestions[0]).toContain('IDRS screening tool');
   const waistArticle=educationTopic('measurements-waist','en')!;
   expect(waistArticle.title).toBe('How to measure waist circumference');
   expect(waistArticle.sections.map(section=>section.content).join(' ')).toContain('Keep the tape level and comfortable');
