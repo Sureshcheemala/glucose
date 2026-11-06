@@ -13,6 +13,20 @@ const DB='glucoguide-local';
 async function db(){return openDB<AssessmentDB>(DB,ASSESSMENT_DB_VERSION,{upgrade(database,oldVersion){upgradeAssessmentDatabase(database,oldVersion)}})}
 const newId=()=>globalThis.crypto?.randomUUID?.()??`session-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 export async function createAssessmentSession(participantStatus:ParticipantStatus):Promise<AssessmentSession>{const now=new Date().toISOString();const session:AssessmentSession={id:newId(),createdAt:now,updatedAt:now,participantStatus,idrsSnapshots:[],dietarySnapshots:[],completionStatus:'in-progress'};await(await db()).add('assessment-sessions',session);return session}
+/** Atomically persists a user-confirmed in-memory unified assessment. Repeated saves are idempotent by session ID. */
+export async function savePreviewAssessmentSession(input:AssessmentSession):Promise<AssessmentSession>{
+ if(!input.idrsSnapshots.length&&!input.dietarySnapshots.length)throw new Error('Complete at least one assessment module before saving.');
+ if(input.idrsSnapshots.length&&!input.idrsSnapshots.at(-1)?.recommendations)throw new Error('IDRS recommendation snapshot is missing.');
+ const database=await db();const tx=database.transaction(['screenings','dietary-assessments','assessment-sessions','diabetes-metrics'],'readwrite');const sessions=tx.objectStore('assessment-sessions');
+ const already=await sessions.get(input.id);if(already){await tx.done;return already}
+ const session=structuredClone(input);const idrs=structuredClone(session.idrsSnapshots.at(-1));const dietary=structuredClone(session.dietarySnapshots.at(-1));
+ session.idrsSnapshots=[];session.dietarySnapshots=[];session.diabetesMetricsSnapshots=[];
+ if(idrs&&idrs.recommendations){const base=createHistoryRecord(idrs.result,idrs.recommendations);const id=Number(await tx.objectStore('screenings').add(base));const saved:Saved={...base,id,recommendationSnapshot:{...structuredClone(idrs.recommendations),screeningId:id}};await tx.objectStore('screenings').put(saved);session.idrsSnapshots=[{legacyId:id,result:structuredClone(saved),recommendations:saved.recommendationSnapshot}]}
+ if(dietary){const value=structuredClone(dietary.snapshot);delete value.assessmentId;const id=Number(await tx.objectStore('dietary-assessments').add(value));const saved={...value,assessmentId:id,id};await tx.objectStore('dietary-assessments').put(saved);session.dietarySnapshots=[{legacyId:id,snapshot:structuredClone(saved)}]}
+ for(const metric of input.diabetesMetricsSnapshots??[]){const value={...structuredClone(metric.snapshot),sessionId:session.id};delete (value as {id?:number}).id;const id=Number(await tx.objectStore('diabetes-metrics').add(value));session.diabetesMetricsSnapshots.push({legacyId:id,snapshot:{...value,id}})}
+ session.completionStatus=session.idrsSnapshots.length&&session.dietarySnapshots.length?'completed':'in-progress';session.updatedAt=new Date().toISOString();
+ await sessions.add(session);await tx.done;return session;
+}
 export async function getAssessmentSession(id:string){return(await db()).get('assessment-sessions',id)}
 /** Saves and links an IDRS result in one transaction. A retry for the same result is idempotent. */
 export async function saveIDRSResultToSession(id:string,result:Result,recommendations:RecommendationSnapshot):Promise<number>{
