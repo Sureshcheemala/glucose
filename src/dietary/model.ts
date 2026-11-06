@@ -1,0 +1,14 @@
+export type DietaryLang='en'|'te';
+export type Localized={en:string;te:string};
+export type ReviewStatus='draft'|'pending_review'|'approved'|'retired';
+export type Frequency='daily'|'several_weekly'|'once_twice_weekly'|'rarely'|'never'|'not_applicable';
+export type DietaryAnswer=Frequency|'yes'|'no'|'sometimes'|'unknown'|'vegetarian'|'eggetarian'|'non_vegetarian'|'other'|'prefer_not_to_say'|string|string[];
+export interface QuestionOption{id:string;label:Localized}
+export type DietaryParticipantStatus='not-diagnosed'|'diagnosed'|'unknown';
+export interface DietaryQuestion{id:string;section:'meals'|'variety'|'sugar'|'habits'|'context';prompt:Localized;help?:Localized;options:QuestionOption[];optional?:boolean;visibility?:Exclude<DietaryParticipantStatus,'unknown'>;contentVersion:string;reviewStatus:ReviewStatus;purpose?:Localized;recommendationIds?:string[]}
+export interface DietaryArticle{id:string;category:string;title:Localized;introduction:Localized;sections:{heading:Localized;content:Localized;examples:Localized;misconception:Localized}[];takeaways:Localized[];related:string[];sources:string[];version:string;reviewStatus:ReviewStatus}
+export interface DietaryRecommendation{id:string;articleId:string;title:Localized;why:Localized;suggestion:Localized;professionalCare:Localized;sources:string[];version:string;reviewStatus:ReviewStatus;group:'answer'|'general'}
+export interface DietarySnapshot{assessmentId?:number;date:string;answers:Record<string,DietaryAnswer>;language:DietaryLang;participantStatus?:DietaryParticipantStatus;questionnaireVersion?:string;recommendationRulesVersion?:string;contentVersion:string;reviewStatus:ReviewStatus;recommendations:DietaryRecommendation[];sourceReferences?:{id:string;title:string;organization:string;publicationYear:number;url:string}[]}
+export interface DatedMetric{value:number;unit:'%'|'mg/dL';measuredAt:string}
+export interface DiabetesMetricsSnapshot{id?:number;sessionId:string;recordedAt:string;language:DietaryLang;reviewStatus:ReviewStatus;hba1c?:DatedMetric;fastingGlucose?:DatedMetric;postMealGlucose?:DatedMetric;postMealHours?:number;durationYears?:number;sourceReferences:string[]}
+export interface DiabetesMetricsForm{hba1c:string;hba1cDate:string;fastingGlucose:string;fastingDate:string;postMealGlucose:string;postMealDate:string;postMealHours:string;durationYears:string}

@@ -23,3 +23,21 @@ export function validateQuestionnaire(answers:Partial<Answers>):Record<Questionn
 export function hasValidQuestionnaire(answers:Partial<Answers>):answers is Answers{
   return Object.values(validateQuestionnaire(answers)).every(issue=>issue===null);
 }
+
+/** Restores current wrapped drafts and the legacy answer-only shape without trusting persisted values. */
+export function normalizeIDRSDraft(value:unknown):{answers:Partial<Answers>;step:number}{
+  if(!value||typeof value!=='object'||Array.isArray(value))return {answers:{},step:0};
+  const source=value as Record<string,unknown>;
+  const wrapped=Object.hasOwn(source,'answers');
+  const rawAnswers=wrapped?source.answers:source;
+  const answers:Partial<Answers>={};
+  if(rawAnswers&&typeof rawAnswers==='object'&&!Array.isArray(rawAnswers)){
+    for(const field of ['age','sex','waist','activity','parents'] as const){
+      const answer=(rawAnswers as Record<string,unknown>)[field];
+      if(validateQuestionAnswer(field,answer)===null)Object.assign(answers,{[field]:answer});
+    }
+  }
+  const rawStep=wrapped?source.step:0;
+  const step=typeof rawStep==='number'&&Number.isInteger(rawStep)?Math.max(0,Math.min(4,rawStep)):0;
+  return {answers,step};
+}
