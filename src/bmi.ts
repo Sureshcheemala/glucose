@@ -1,0 +1,2 @@
+export type BMIClass='underweight'|'healthy'|'overweight'|'obesity';
+export function calculateBMI(heightCm:number,weightKg:number){if(!Number.isFinite(heightCm)||heightCm<100||heightCm>250||!Number.isFinite(weightKg)||weightKg<20||weightKg>300) throw new Error('Enter a height between 100–250 cm and weight between 20–300 kg.'); const value=weightKg/((heightCm/100)**2);const classification:BMIClass=value<18.5?'underweight':value<25?'healthy':value<30?'overweight':'obesity';return {value:Number(value.toFixed(1)),classification};}
